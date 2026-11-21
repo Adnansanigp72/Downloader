@@ -2,6 +2,8 @@ name: Build Debug APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main, master]
 
 permissions:
   contents: read
@@ -9,22 +11,19 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract uploaded ZIP
+      - name: Extract project ZIP
         run: |
-          unzip -q VideoDownloader-GitHub-Build.zip -d package
-          unzip -q package/github_debug_build/project.zip -d source
+          unzip -q -o project.zip -d source
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
