@@ -3,7 +3,8 @@ name: Build Debug APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, master]
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -16,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -24,26 +25,40 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
-
-      - name: Setup Gradle 8.7
-        uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
+          accept-android-sdk-licenses: true
 
-      - name: Extract Project ZIP
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Extract uploaded ZIP
         run: |
-          unzip -q -o project.zip -d source
+          mkdir -p project
+          unzip -q project.zip -d project
+
+      - name: Locate Gradle project
+        run: |
+          GRADLEW=$(find project -type f -name gradlew | head -n 1)
+          if [ -z "$GRADLEW" ]; then
+            echo "gradlew not found inside project.zip"
+            exit 1
+          fi
+          GRADLE_DIR=$(dirname "$GRADLEW")
+          echo "GRADLE_DIR=$GRADLE_DIR" >> $GITHUB_ENV
+          chmod +x "$GRADLEW"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Build Debug APK
-        working-directory: source
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: |
+          cd "$GRADLE_DIR"
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: VidTube-Debug-APK
-          path: source/app/build/outputs/apk/debug/*.apk
+          name: Debug-APK
+          path: project/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
